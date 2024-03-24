@@ -54,8 +54,9 @@ void Win::OnPaint()
 	// TODO: добавьте свой код обработчика сообщений
 	// Не вызывать CFrameWnd::OnPaint() для сообщений рисования
 	
-	double maxX = 3., minX = -3., maxY = 2., minY = -2.;
-	double stepX = (maxX - minX) / 20, stepY = (maxY - minY) / 20;
+	double maxX = 4., minX = -4., maxY = 2., minY = -2.;
+	int num_polygon = 30;
+	double stepX = (maxX - minX) / num_polygon, stepY = (maxY - minY) / num_polygon;
 
 	RECT my_rect_wnd;
 	GetClientRect(&my_rect_wnd);
@@ -110,9 +111,10 @@ void Win::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	// TODO: добавьте свой код обработчика сообщений или вызов стандартного
 
 	CFrameWnd::OnKeyDown(nChar, nRepCnt, nFlags);
-	if (nChar == VK_LEFT) aroundZ--;
-	if (nChar == VK_RIGHT) aroundZ++;
-	if (nChar == VK_UP) aroundY--;
-	if (nChar == VK_DOWN) aroundY++;
+	double change_ugol = 1.5;
+	if (nChar == VK_LEFT) aroundZ -= change_ugol;
+	if (nChar == VK_RIGHT) aroundZ += change_ugol;
+	if (nChar == VK_UP) aroundY -= change_ugol;
+	if (nChar == VK_DOWN) aroundY += change_ugol;
 	Invalidate(FALSE);
 }
