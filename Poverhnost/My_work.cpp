@@ -4,12 +4,72 @@
 #include <windows.h>
 #include <objidl.h>
 #include <gdiplus.h>
+#include <vector>
+#include <algorithm>
+#include <fstream>
 using namespace Gdiplus;
 #pragma comment (lib,"Gdiplus.lib")
 
 double FuncZ(double x, double y)
 {
 	return cos(x * x + y * y) / (x * x + y * y + 1);
+}
+
+struct my_polygon
+{
+	double l;
+	math3d::vec4 v1, v2, v3, v4;
+	Color color_polygon;
+
+	my_polygon(double x, double y, double stepX, double stepY, double aroundY, double aroundZ, double x0)
+	{
+		v1 = math3d::vec4(x, y, FuncZ(x, y));
+		v2 = math3d::vec4(x + stepX, y, FuncZ(x + stepX, y));
+		v3 = math3d::vec4(x + stepX, y + stepY, FuncZ(x + stepX, y + stepY));
+		v4 = math3d::vec4(x, y + stepY, FuncZ(x, y + stepY));
+
+		math3d::mat4 my_mat = math3d::mat4();
+		my_mat.rotateY(aroundY).rotateZ(aroundZ).perspective(10);
+
+		v1 = v1 * my_mat;
+		v2 = v2 * my_mat;
+		v3 = v3 * my_mat;
+		v4 = v4 * my_mat;
+
+		double centerX = (v1.x() + v2.x() + v3.x() + v4.x()) / 4;
+		double centerY = (v1.y() + v2.y() + v3.y() + v4.y()) / 4;
+		double centerZ = (v1.z() + v2.z() + v3.z() + v4.z()) / 4;
+
+		l = sqrt((centerX - x0) * (centerX - x0) + centerY * centerY + centerZ * centerZ);
+
+		color_polygon = Color::Coral;
+	}
+
+	PointF* GetPointF()
+	{
+		PointF* points = new PointF[4];
+
+		points[0] = PointF(v1.y(), v1.z());
+		points[1] = PointF(v2.y(), v2.z());
+		points[2] = PointF(v3.y(), v3.z());
+		points[3] = PointF(v4.y(), v4.z());
+		return points;
+	}
+};
+
+void SorterPolygons(std::vector<my_polygon>& polygons)
+{
+	int num;
+
+	for (int i = 0; i < polygons.size() - 1; i++)
+	{
+		num = i;
+		for (int j = i; j < polygons.size(); j++)
+		{
+			if (polygons[j].l > polygons[num].l) num = j;
+		}
+		std::swap(polygons[i], polygons[num]);
+	}
 }
 
 class App : public CWinApp
@@ -54,8 +114,8 @@ void Win::OnPaint()
 	// TODO: добавьте свой код обработчика сообщений
 	// Не вызывать CFrameWnd::OnPaint() для сообщений рисования
 	
-	double maxX = 4., minX = -4., maxY = 2., minY = -2.;
-	int num_polygon = 30;
+	double maxX = 6., minX = -6., maxY = 4., minY = -4.;
+	int num_polygon = 50;
 	double stepX = (maxX - minX) / num_polygon, stepY = (maxY - minY) / num_polygon;
 
 	RECT my_rect_wnd;
@@ -70,36 +130,23 @@ void Win::OnPaint()
 	matr.Translate(my_rect_wnd.right / 2, my_rect_wnd.bottom / 2);
 	matr.Scale(my_rect_wnd.right / (maxX - minX), my_rect_wnd.bottom / (minY - maxY));
 	buf_gr.SetTransform(&matr);
-	buf_gr.Clear({ 255, 171, 205, 239 });
+	buf_gr.Clear({ 255, 0, 0, 0 });
 
-	Pen my_pen({ 255, 255, 0, 0 }, 0.01);
-	SolidBrush* my_brush = new SolidBrush({ 255, 200, 5, 0 });
+	Pen my_pen({ 255, 255, 0, 0 }, 0.01), p(Color::Black, 0.1);
+	SolidBrush* my_brush;
 
-	for (double x = -2.; x < 2.; x += stepX)
+	std::vector<my_polygon> polygons;
+	for (double x = -3.; x < 3.; x += stepX)
+		for (double y = -3.; y < 3.; y += stepY) 
+			polygons.push_back(my_polygon(x, y, stepX, stepY, aroundY, aroundZ, maxX));
+
+	SorterPolygons(polygons);
+
+	for (auto pl : polygons)
 	{
-		for (double y = -2.; y < 2.; y += stepY)
-		{
-			math3d::vec4 v1(x, y, FuncZ(x, y));
-			math3d::vec4 v2(x + stepX, y, FuncZ(x + stepX, y));
-			math3d::vec4 v3(x + stepX, y + stepY, FuncZ(x + stepX, y + stepY));
-			math3d::vec4 v4(x, y + stepY, FuncZ(x, y + stepY));
-
-			math3d::mat4 my_mat = math3d::mat4();
-			my_mat.rotateY(aroundY).rotateZ(aroundZ);
-			v1 = v1 * my_mat;
-			v2 = v2 * my_mat;
-			v3 = v3 * my_mat;
-			v4 = v4 * my_mat;
-
-			PointF p1(v1.y(), v1.z());
-			PointF p2(v2.y(), v2.z());
-			PointF p3(v3.y(), v3.z());
-			PointF p4(v4.y(), v4.z());
-
-			PointF points[] = { p1, p2, p3, p4 };
-			buf_gr.DrawPolygon(&my_pen, points, 4);
-			buf_gr.FillPolygon(my_brush, points, 4);
-		}
+		my_brush = new SolidBrush(pl.color_polygon);
+		buf_gr.DrawPolygon(&my_pen, pl.GetPointF(), 4);
+		buf_gr.FillPolygon(my_brush, pl.GetPointF(), 4);
 	}
 
 	gr.DrawImage(&buffer, 0, 0, 0, 0, my_rect_wnd.right, my_rect_wnd.bottom, UnitPixel);
@@ -111,7 +158,7 @@ void Win::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	// TODO: добавьте свой код обработчика сообщений или вызов стандартного
 
 	CFrameWnd::OnKeyDown(nChar, nRepCnt, nFlags);
-	double change_ugol = 1.5;
+	double change_ugol = 2;
 	if (nChar == VK_LEFT) aroundZ -= change_ugol;
 	if (nChar == VK_RIGHT) aroundZ += change_ugol;
 	if (nChar == VK_UP) aroundY -= change_ugol;

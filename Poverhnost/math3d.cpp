@@ -15,7 +15,7 @@ math3d::mat4::mat4(float m11, float m12, float m13, float m21, float m22, float 
 math3d::mat4& math3d::mat4::operator=(const mat4& right)
 {
 	// TODO: вставьте здесь оператор return
-	std::copy_n(right._matrix[0], 4, _matrix[0]);
+	std::copy_n(right._matrix[0], 16, _matrix[0]);
 	return *this;
 }
 
@@ -67,6 +67,7 @@ math3d::mat4& math3d::mat4::rotateZ(float angle)
 	// TODO: вставьте здесь оператор return
 	mat4 mat_rotateZ(cos(angle * M_PI / 180), sin(angle * M_PI / 180), 0., -sin(angle * M_PI / 180), cos(angle * M_PI / 180), 0., 0., 0., 1.);
 	*this = *this * mat_rotateZ;
+	//auto res = *this;
 	return *this;
 }
 
